@@ -2,55 +2,46 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=5,user-scalable=yes">
 <title>STORY MENU</title>
+
 <style>
-html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#000;touch-action:manipulation}
-#stage{position:fixed;inset:0}
-.slide{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;opacity:0;transition:opacity .8s ease;user-select:none;-webkit-user-drag:none}
-.slide.active{opacity:1}
-</style>
-</head>
-<body>
-<div id="stage"></div>
-<script>
-const images=[
-"1787740070405.jpg",
-"1787740122587.jpg",
-"1787740113217.jpg",
-"1787740104245.jpg"
-];
-const interval=7000;
-const stage=document.getElementById("stage");
-let current=0, timer=null, paused=false;
+html,body{
+  margin:0;
+  width:100%;
+  height:100%;
+  background:#000;
+  overflow:hidden;
+}
 
-images.forEach((src,i)=>{
-  const img=document.createElement("img");
-  img.src=src;
-  img.className="slide"+(i===0?" active":"");
-  img.draggable=false;
-  stage.appendChild(img);
-});
-const slides=[...document.querySelectorAll(".slide")];
+#stage{
+  position:fixed;
+  inset:0;
+  background:#000;
+  touch-action:auto;
+}
 
-function next(){
-  slides[current].classList.remove("active");
-  current=(current+1)%slides.length;
-  slides[current].classList.add("active");
+.slide{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  object-fit:contain;
+  opacity:0;
+  transition:opacity .45s ease;
+  user-select:none;
+  -webkit-user-drag:none;
 }
-function start(){
-  clearInterval(timer);
-  timer=setInterval(next,interval);
-  paused=false;
+
+.slide.active{
+  opacity:1;
 }
-function toggle(){
-  if(paused){ start(); }
-  else { clearInterval(timer); paused=true; }
-}
-stage.addEventListener("click",toggle);
-stage.addEventListener("contextmenu",e=>e.preventDefault());
-document.addEventListener("dragstart",e=>e.preventDefault());
-start();
-</script>
-</body>
-</html>
+
+#pauseMark{
+  position:fixed;
+  left:50%;
+  top:50%;
+  transform:translate(-50%,-50%);
+  font-size:64px;
+  color:rgba(255,255,255,.9);
+  text-shadow:0 2px 10px rgba(0,0,0
