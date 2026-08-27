@@ -1,243 +1,162 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=5,user-scalable=yes">
 <title>STORY MENU</title>
 <style>
 *{box-sizing:border-box}
-html,body{
-  margin:0;
-  width:100%;
-  height:100%;
-  background:#000;
-  overflow:hidden;
-}
-#app{
-  position:fixed;
-  inset:0;
-  background:#000;
-  touch-action:none;
-}
-.slide{
-  position:absolute;
-  inset:0;
-  width:100%;
-  height:100%;
-  object-fit:contain;
-  opacity:0;
-  transition:opacity .35s ease;
-  transform-origin:center center;
-  user-select:none;
-  -webkit-user-drag:none;
-  pointer-events:none;
-}
-.slide.active{
-  opacity:1;
-}
-#status{
-  position:fixed;
-  left:50%;
-  top:50%;
-  transform:translate(-50%,-50%);
-  padding:10px 16px;
-  border-radius:999px;
-  background:rgba(0,0,0,.55);
-  color:#fff;
-  font:600 28px/1 sans-serif;
-  opacity:0;
-  pointer-events:none;
-  transition:opacity .15s;
-  z-index:20;
-}
-#status.show{opacity:1}
+html,body{margin:0;width:100%;height:100%;background:#000;overflow:hidden}
+#stage{position:fixed;inset:0;background:#000;overflow:hidden;touch-action:none}
+.slide{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;opacity:0;
+transition:opacity .35s ease;transform-origin:center center;user-select:none;
+-webkit-user-drag:none;pointer-events:none}
+.slide.active{opacity:1}
+#mark{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);
+padding:10px 16px;border-radius:999px;background:rgba(0,0,0,.55);color:#fff;
+font:600 30px/1 sans-serif;opacity:0;pointer-events:none;transition:opacity .15s;z-index:20}
+#mark.show{opacity:1}
 </style>
 </head>
 <body>
-<div id="app">
-  <img class="slide active" src="./1787740070405.jpg" alt="">
-  <img class="slide" src="./1787740122587.jpg" alt="">
-  <img class="slide" src="./1787740113217.jpg" alt="">
-  <img class="slide" src="./1787740104245.jpg" alt="">
-</div>
-<div id="status">Ⅱ</div>
-
+<div id="stage"></div><div id="mark">Ⅱ</div>
 <script>
-(function(){
-  const app = document.getElementById("app");
-  const slides = Array.from(document.querySelectorAll(".slide"));
-  const status = document.getElementById("status");
+(async function(){
+  const stage=document.getElementById("stage"), mark=document.getElementById("mark");
+  const candidates=Array.from({length:10},(_,i)=>`menu${i+1}.jpg`);
+  const available=[];
 
-  let current = 0;
-  let paused = false;
-  let timer = null;
-
-  let startX = 0;
-  let startY = 0;
-  let moved = false;
-
-  let scale = 1;
-  let panX = 0;
-  let panY = 0;
-
-  let pinchStartDistance = 0;
-  let pinchStartScale = 1;
-  let lastTouchX = 0;
-  let lastTouchY = 0;
-
-  const INTERVAL = 7000;
-
-  function activeSlide(){
-    return slides[current];
-  }
-
-  function applyTransform(){
-    activeSlide().style.transform =
-      "translate(" + panX + "px," + panY + "px) scale(" + scale + ")";
-  }
-
-  function resetTransform(){
-    scale = 1;
-    panX = 0;
-    panY = 0;
-    slides.forEach(function(img){
-      img.style.transform = "translate(0px,0px) scale(1)";
+  function exists(src){
+    return new Promise(resolve=>{
+      const im=new Image();
+      im.onload=()=>resolve(src);
+      im.onerror=()=>resolve(null);
+      im.src=src+"?v="+Date.now();
     });
   }
 
-  function show(index){
-    slides[current].classList.remove("active");
-    current = (index + slides.length) % slides.length;
-    slides[current].classList.add("active");
+  const checked=await Promise.all(candidates.map(exists));
+  checked.filter(Boolean).forEach(src=>{
+    const im=document.createElement("img");
+    im.src=src;
+    im.dataset.src=src;
+    im.className="slide";
+    stage.appendChild(im);
+    available.push(im);
+  });
+
+  if(!available.length){
+    document.body.innerHTML='<div style="color:#fff;padding:24px;font:20px sans-serif">menu1.jpg〜menu10.jpg が見つかりません。</div>';
+    return;
+  }
+
+  available[0].classList.add("active");
+
+  let current=0, paused=false, timer=null;
+  let scale=1, panX=0, panY=0;
+  let startX=0,startY=0,lastX=0,lastY=0,moved=false;
+  let pinchDistance=0,pinchScale=1;
+  let lastTap=0,tapTimer=null;
+  const INTERVAL=7000;
+
+  function active(){return available[current]}
+  function resetTransform(){
+    scale=1;panX=0;panY=0;
+    available.forEach(x=>x.style.transform="translate(0px,0px) scale(1)");
+  }
+  function apply(){
+    active().style.transform=`translate(${panX}px,${panY}px) scale(${scale})`;
+  }
+  function show(i){
+    active().classList.remove("active");
+    current=(i+available.length)%available.length;
+    active().classList.add("active");
     resetTransform();
   }
-
-  function next(){ show(current + 1); }
-  function prev(){ show(current - 1); }
-
-  function startTimer(){
+  function next(){show(current+1)}
+  function prev(){show(current-1)}
+  function startAuto(){
     clearInterval(timer);
-    if(!paused){
-      timer = setInterval(next, INTERVAL);
-    }
+    if(!paused) timer=setInterval(next,INTERVAL);
   }
-
-  function flash(text){
-    status.textContent = text;
-    status.classList.add("show");
-    setTimeout(function(){
-      status.classList.remove("show");
-    }, 650);
+  function flash(txt){
+    mark.textContent=txt; mark.classList.add("show");
+    setTimeout(()=>mark.classList.remove("show"),550);
   }
-
   function togglePause(){
-    paused = !paused;
-    if(paused){
-      clearInterval(timer);
-      flash("Ⅱ");
-    }else{
-      flash("▶");
-      startTimer();
-    }
+    paused=!paused;
+    if(paused){clearInterval(timer);flash("Ⅱ")}
+    else{flash("▶");startAuto()}
   }
-
-  function distance(a,b){
-    const dx = a.clientX - b.clientX;
-    const dy = a.clientY - b.clientY;
+  function dist(a,b){
+    const dx=a.clientX-b.clientX,dy=a.clientY-b.clientY;
     return Math.hypot(dx,dy);
   }
+  function openDetailIfAllowed(){
+    const src=active().dataset.src;
+    if(src==="menu1.jpg" || src==="menu2.jpg"){
+      location.href="full-menu.html";
+    }
+  }
 
-  app.addEventListener("touchstart", function(e){
-    if(e.touches.length === 2){
+  stage.addEventListener("touchstart",e=>{
+    if(e.touches.length===2){
       clearInterval(timer);
-      pinchStartDistance = distance(e.touches[0], e.touches[1]);
-      pinchStartScale = scale;
+      pinchDistance=dist(e.touches[0],e.touches[1]);
+      pinchScale=scale;
       return;
     }
-
-    if(e.touches.length === 1){
-      const t = e.touches[0];
-      startX = t.clientX;
-      startY = t.clientY;
-      lastTouchX = t.clientX;
-      lastTouchY = t.clientY;
-      moved = false;
+    if(e.touches.length===1){
+      const t=e.touches[0];
+      startX=lastX=t.clientX; startY=lastY=t.clientY; moved=false;
     }
-  }, {passive:false});
+  },{passive:false});
 
-  app.addEventListener("touchmove", function(e){
+  stage.addEventListener("touchmove",e=>{
     e.preventDefault();
-
-    if(e.touches.length === 2){
-      const d = distance(e.touches[0], e.touches[1]);
-      if(pinchStartDistance > 0){
-        scale = Math.max(1, Math.min(4, pinchStartScale * d / pinchStartDistance));
-        if(scale === 1){
-          panX = 0;
-          panY = 0;
-        }
-        applyTransform();
+    if(e.touches.length===2){
+      const d=dist(e.touches[0],e.touches[1]);
+      if(pinchDistance){
+        scale=Math.max(1,Math.min(4,pinchScale*d/pinchDistance));
+        if(scale===1){panX=0;panY=0}
+        apply();
       }
       return;
     }
-
-    if(e.touches.length === 1){
-      const t = e.touches[0];
-      const dxTotal = t.clientX - startX;
-      const dyTotal = t.clientY - startY;
-
-      if(Math.abs(dxTotal) > 8 || Math.abs(dyTotal) > 8){
-        moved = true;
+    if(e.touches.length===1){
+      const t=e.touches[0];
+      const dx=t.clientX-startX,dy=t.clientY-startY;
+      if(Math.abs(dx)>8||Math.abs(dy)>8)moved=true;
+      if(scale>1){
+        panX+=t.clientX-lastX; panY+=t.clientY-lastY; apply();
       }
-
-      if(scale > 1){
-        panX += t.clientX - lastTouchX;
-        panY += t.clientY - lastTouchY;
-        applyTransform();
-      }
-
-      lastTouchX = t.clientX;
-      lastTouchY = t.clientY;
+      lastX=t.clientX; lastY=t.clientY;
     }
-  }, {passive:false});
+  },{passive:false});
 
-  app.addEventListener("touchend", function(e){
-    if(e.touches.length > 0) return;
+  stage.addEventListener("touchend",e=>{
+    if(e.touches.length>0)return;
+    const t=e.changedTouches[0];
+    const dx=t.clientX-startX,dy=t.clientY-startY;
 
-    if(scale > 1){
-      startTimer();
-      return;
+    if(scale===1 && Math.abs(dx)>60 && Math.abs(dx)>Math.abs(dy)){
+      if(dx<0)next(); else prev();
+      startAuto(); return;
     }
+    if(moved || scale>1){startAuto();return}
 
-    const t = e.changedTouches[0];
-    const dx = t.clientX - startX;
-    const dy = t.clientY - startY;
-
-    if(Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy)){
-      if(dx < 0) next();
-      else prev();
-      startTimer();
-      return;
+    const now=Date.now();
+    if(now-lastTap<320){
+      clearTimeout(tapTimer);
+      lastTap=0;
+      openDetailIfAllowed();
+    }else{
+      lastTap=now;
+      tapTimer=setTimeout(()=>{togglePause();lastTap=0},330);
     }
+  },{passive:false});
 
-    if(!moved){
-      togglePause();
-    }
-  }, {passive:false});
-
-  app.addEventListener("dblclick", function(){
-    resetTransform();
-  });
-
-  slides.forEach(function(img){
-    img.addEventListener("error", function(){
-      document.body.innerHTML =
-        '<div style="color:white;background:#000;padding:24px;font:20px sans-serif">画像を読み込めません: ' +
-        img.getAttribute("src") + '</div>';
-    });
-  });
-
-  startTimer();
+  startAuto();
 })();
 </script>
 </body>
