@@ -160,5 +160,14 @@ font:600 30px/1 sans-serif;opacity:0;pointer-events:none;transition:opacity .15s
   startAuto();
 })();
 </script>
+
+<script>
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./service-worker.js");
+  });
+}
+</script>
+
 </body>
 </html>
