@@ -168,6 +168,12 @@ if ("serviceWorker" in navigator) {
   });
 }
 </script>
-
+<script>
+// STORY MENU 自動更新
+// 5分ごとにページを再読み込みしてGitHubの最新画像を取得
+setInterval(() => {
+  location.reload();
+}, 5 * 60 * 1000);
+</script>
 </body>
 </html>
