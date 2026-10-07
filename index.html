@@ -19,182 +19,114 @@ font:600 30px/1 sans-serif;opacity:0;pointer-events:none;transition:opacity .15s
 #mark.show{opacity:1}
 </style>
 </head>
+
 <body>
-<div id="stage"></div><div id="mark">Ⅱ</div>
+
+<div id="stage"></div>
+<div id="mark">Ⅱ</div>
+
 <script>
 (async function(){
-  const stage=document.getElementById("stage"), mark=document.getElementById("mark");
-  const candidates=Array.from({length:10},(_,i)=>`menu${i+1}.jpg`);
+
+  const stage=document.getElementById("stage");
+  const mark=document.getElementById("mark");
+
+  // menu1.jpg ～ menu15.jpg
+  const candidates=Array.from(
+    {length:15},
+    (_,i)=>`menu${i+1}.jpg`
+  );
+
   const available=[];
 
   function exists(src){
     return new Promise(resolve=>{
       const im=new Image();
+
       im.onload=()=>resolve(src);
       im.onerror=()=>resolve(null);
+
+      // キャッシュを使わず最新画像を確認
       im.src=src+"?v="+Date.now();
     });
   }
 
-  const checked=await Promise.all(candidates.map(exists));
+  const checked=await Promise.all(
+    candidates.map(exists)
+  );
+
   checked.filter(Boolean).forEach(src=>{
+
     const im=document.createElement("img");
-    im.src=src;
+
+    // 最新画像を取得
+    im.src=src+"?v="+Date.now();
     im.dataset.src=src;
     im.className="slide";
+
     stage.appendChild(im);
     available.push(im);
   });
 
   if(!available.length){
-    document.body.innerHTML='<div style="color:#fff;padding:24px;font:20px sans-serif">menu1.jpg〜menu10.jpg が見つかりません。</div>';
+
+    document.body.innerHTML=
+      '<div style="color:#fff;padding:24px;font:20px sans-serif">' +
+      'menu1.jpg〜menu15.jpg が見つかりません。' +
+      '</div>';
+
     return;
   }
 
   available[0].classList.add("active");
 
-  let current=0, paused=false, timer=null;
-  let scale=1, panX=0, panY=0;
-  let startX=0,startY=0,lastX=0,lastY=0,moved=false;
-  let pinchDistance=0,pinchScale=1;
-  let lastTap=0,tapTimer=null;
-  const INTERVAL=7000;
+  let current=0;
+  let paused=false;
+  let timer=null;
 
-  function active(){return available[current]}
+  let scale=1;
+  let panX=0;
+  let panY=0;
+
+  let startX=0;
+  let startY=0;
+  let lastX=0;
+  let lastY=0;
+  let moved=false;
+
+  let pinchDistance=0;
+  let pinchScale=1;
+
+  // 6秒
+  const INTERVAL=6000;
+
+  function active(){
+    return available[current];
+  }
+
   function resetTransform(){
-    scale=1;panX=0;panY=0;
-    available.forEach(x=>x.style.transform="translate(0px,0px) scale(1)");
+
+    scale=1;
+    panX=0;
+    panY=0;
+
+    available.forEach(x=>{
+      x.style.transform=
+        "translate(0px,0px) scale(1)";
+    });
   }
+
   function apply(){
-    active().style.transform=`translate(${panX}px,${panY}px) scale(${scale})`;
+
+    active().style.transform=
+      `translate(${panX}px,${panY}px) scale(${scale})`;
   }
+
   function show(i){
+
     active().classList.remove("active");
-    current=(i+available.length)%available.length;
-    active().classList.add("active");
-    resetTransform();
-  }
-  function next(){show(current+1)}
-  function prev(){show(current-1)}
-  function startAuto(){
-    clearInterval(timer);
-    if(!paused) timer=setInterval(next,INTERVAL);
-  }
-  function flash(txt){
-    mark.textContent=txt; mark.classList.add("show");
-    setTimeout(()=>mark.classList.remove("show"),550);
-  }
-  function togglePause(){
-    paused=!paused;
-    if(paused){clearInterval(timer);flash("Ⅱ")}
-    else{flash("▶");startAuto()}
-  }
-  function dist(a,b){
-    const dx=a.clientX-b.clientX,dy=a.clientY-b.clientY;
-    return Math.hypot(dx,dy);
-  }
-  function openDetailIfAllowed(){
-    const src=active().dataset.src;
-    if(src==="menu1.jpg" || src==="menu2.jpg"){
-      location.href="full-menu.html";
-    }
-  }
 
-  stage.addEventListener("touchstart",e=>{
-    if(e.touches.length===2){
-      clearInterval(timer);
-      pinchDistance=dist(e.touches[0],e.touches[1]);
-      pinchScale=scale;
-      return;
-    }
-    if(e.touches.length===1){
-      const t=e.touches[0];
-      startX=lastX=t.clientX; startY=lastY=t.clientY; moved=false;
-    }
-  },{passive:false});
+    current=
+      (i+available.length)%available.length;
 
-  stage.addEventListener("touchmove",e=>{
-    e.preventDefault();
-    if(e.touches.length===2){
-      const d=dist(e.touches[0],e.touches[1]);
-      if(pinchDistance){
-        scale=Math.max(1,Math.min(4,pinchScale*d/pinchDistance));
-        if(scale===1){panX=0;panY=0}
-        apply();
-      }
-      return;
-    }
-    if(e.touches.length===1){
-      const t=e.touches[0];
-      const dx=t.clientX-startX,dy=t.clientY-startY;
-      if(Math.abs(dx)>8||Math.abs(dy)>8)moved=true;
-      if(scale>1){
-        panX+=t.clientX-lastX; panY+=t.clientY-lastY; apply();
-      }
-      lastX=t.clientX; lastY=t.clientY;
-    }
-  },{passive:false});
-
-  stage.addEventListener("touchend",e=>{
-    if(e.touches.length>0)return;
-    const t=e.changedTouches[0];
-    const dx=t.clientX-startX,dy=t.clientY-startY;
-
-    if(scale===1 && Math.abs(dx)>60 && Math.abs(dx)>Math.abs(dy)){
-      if(dx<0)next(); else prev();
-      startAuto(); return;
-    }
-    if(moved || scale>1){startAuto();return}
-
-    const now=Date.now();
-    if(now-lastTap<320){
-      clearTimeout(tapTimer);
-      lastTap=0;
-      openDetailIfAllowed();
-    }else{
-      lastTap=now;
-      tapTimer=setTimeout(()=>{togglePause();lastTap=0},330);
-    }
-  },{passive:false});
-
-  startAuto();
-})();
-</script>
-
-<script>
-if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./service-worker.js");
-  });
-}
-</script>
-<script>
-// STORY MENU 自動更新
-// 毎日 日本時間20:00にページを再読み込み
-function scheduleDailyReload() {
-  const now = new Date();
-
-  // 日本時間を基準に次の20:00を計算
-  const japanNow = new Date(
-    now.toLocaleString("en-US", { timeZone: "Asia/Tokyo" })
-  );
-
-  const next = new Date(japanNow);
-  next.setHours(20, 0, 0, 0);
-
-  if (japanNow >= next) {
-    next.setDate(next.getDate() + 1);
-  }
-
-  const delay = next.getTime() - japanNow.getTime();
-
-  setTimeout(() => {
-    location.reload();
-  }, delay);
-}
-
-scheduleDailyReload();
-</script>
-
-</body>
-</html> 
+    active
