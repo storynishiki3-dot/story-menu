@@ -24,7 +24,7 @@ font:600 30px/1 sans-serif;opacity:0;pointer-events:none;transition:opacity .15s
 <script>
 (async function(){
   const stage=document.getElementById("stage"), mark=document.getElementById("mark");
-  const candidates=Array.from({length:15},(_,i)=>`menu${i+1}.jpg`);
+  const candidates=Array.from({length:10},(_,i)=>`menu${i+1}.jpg`);
   const available=[];
 
   function exists(src){
@@ -58,7 +58,7 @@ font:600 30px/1 sans-serif;opacity:0;pointer-events:none;transition:opacity .15s
   let startX=0,startY=0,lastX=0,lastY=0,moved=false;
   let pinchDistance=0,pinchScale=1;
   let lastTap=0,tapTimer=null;
-  const INTERVAL=6す000;
+  const INTERVAL=7000;
 
   function active(){return available[current]}
   function resetTransform(){
@@ -92,6 +92,12 @@ font:600 30px/1 sans-serif;opacity:0;pointer-events:none;transition:opacity .15s
   function dist(a,b){
     const dx=a.clientX-b.clientX,dy=a.clientY-b.clientY;
     return Math.hypot(dx,dy);
+  }
+  function openDetailIfAllowed(){
+    const src=active().dataset.src;
+    if(src==="menu1.jpg" || src==="menu2.jpg"){
+      location.href="full-menu.html";
+    }
   }
 
   stage.addEventListener("touchstart",e=>{
@@ -140,7 +146,15 @@ font:600 30px/1 sans-serif;opacity:0;pointer-events:none;transition:opacity .15s
     }
     if(moved || scale>1){startAuto();return}
 
-  togglePause();
+    const now=Date.now();
+    if(now-lastTap<320){
+      clearTimeout(tapTimer);
+      lastTap=0;
+      openDetailIfAllowed();
+    }else{
+      lastTap=now;
+      tapTimer=setTimeout(()=>{togglePause();lastTap=0},330);
+    }
   },{passive:false});
 
   startAuto();
@@ -183,4 +197,4 @@ scheduleDailyReload();
 </script>
 
 </body>
-</html>
+</html> 
