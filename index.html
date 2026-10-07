@@ -62,7 +62,22 @@ font:600 30px/1 sans-serif;opacity:0;pointer-events:none;transition:opacity .15s
   let startX=0,startY=0,lastX=0,lastY=0,moved=false;
   let pinchDistance=0,pinchScale=1;
 
-  const INTERVAL=6000;
+  // スライドごとの表示時間
+  // menu1〜5   = 10秒
+  // menu6〜10  = 6秒
+  // menu11〜15 = 4秒
+  function getInterval(){
+    const src=active().dataset.src;
+    const match=src.match(/menu(\d+)\.jpg/);
+
+    if(!match) return 6000;
+
+    const number=parseInt(match[1],10);
+
+    if(number<=5) return 10000;
+    if(number<=10) return 6000;
+    return 4000;
+  }
 
   function active(){return available[current]}
 
@@ -82,13 +97,22 @@ font:600 30px/1 sans-serif;opacity:0;pointer-events:none;transition:opacity .15s
     resetTransform();
   }
 
-  function next(){show(current+1)}
+  function next(){
+    show(current+1);
+    startAuto();
+  }
 
-  function prev(){show(current-1)}
+  function prev(){
+    show(current-1);
+    startAuto();
+  }
 
   function startAuto(){
-    clearInterval(timer);
-    if(!paused) timer=setInterval(next,INTERVAL);
+    clearTimeout(timer);
+
+    if(!paused){
+      timer=setTimeout(next,getInterval());
+    }
   }
 
   function flash(txt){
@@ -101,7 +125,7 @@ font:600 30px/1 sans-serif;opacity:0;pointer-events:none;transition:opacity .15s
     paused=!paused;
 
     if(paused){
-      clearInterval(timer);
+      clearTimeout(timer);
       flash("Ⅱ");
     }else{
       flash("▶");
@@ -116,7 +140,7 @@ font:600 30px/1 sans-serif;opacity:0;pointer-events:none;transition:opacity .15s
 
   stage.addEventListener("touchstart",e=>{
     if(e.touches.length===2){
-      clearInterval(timer);
+      clearTimeout(timer);
       pinchDistance=dist(e.touches[0],e.touches[1]);
       pinchScale=scale;
       return;
@@ -177,7 +201,6 @@ font:600 30px/1 sans-serif;opacity:0;pointer-events:none;transition:opacity .15s
       if(dx<0)next();
       else prev();
 
-      startAuto();
       return;
     }
 
@@ -209,7 +232,6 @@ if ("serviceWorker" in navigator) {
 function scheduleDailyReload() {
   const now = new Date();
 
-  // 日本時間を基準に次の20:00を計算
   const japanNow = new Date(
     now.toLocaleString("en-US", { timeZone: "Asia/Tokyo" })
   );
